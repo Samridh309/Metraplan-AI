@@ -37,8 +37,9 @@ app = Flask(__name__)
 # --- Serve Frontend ---
 @app.route('/')
 def serve_index():
-    """Serves the main index.html file."""
-    return send_from_directory('.', 'index.html')
+    """Serves the main index.html file from the parent directory."""
+    # Corrected path to look one directory up ('..') from the current script location.
+    return send_from_directory(os.path.join(basedir, '..'), 'index.html')
 
 # --- LLM Integration ---
 
@@ -49,11 +50,11 @@ You are a world-class project manager AI. Your task is to break down a user's go
 
 Important: Respond with ONLY a valid JSON array of objects. Do not include any explanatory text, markdown formatting, or code block syntax before or after the JSON. The structure for each task object in the array should be:
 {{
-  "id": <unique integer for the task, starting from 1>,
-  "taskName": "<A short, clear name for the task>",
-  "description": "<A one-sentence description of what needs to be done>",
-  "dependencies": [<array of integer ids of tasks that must be completed first>],
-  "timeline": "<A suggested duration or deadline, e.g., 'Day 1-2' or 'By Oct 15'>"
+"id": <unique integer for the task, starting from 1>,
+"taskName": "<A short, clear name for the task>",
+"description": "<A one-sentence description of what needs to be done>",
+"dependencies": [<array of integer ids of tasks that must be completed first>],
+"timeline": "<A suggested duration or deadline, e.g., 'Day 1-2' or 'By Oct 15'>"
 }}
 """
 
