@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetraPlan AI - Smart Task Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .font-heading { 
+            font-family: 'Lexend', sans-serif; 
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark navy/charcoal background */
+        }
+        /* Button Style inspired by the image */
+        .btn-primary {
+            background-color: #A3F52B; /* Vibrant lime green */
+            color: #111827; /* Dark text for high contrast */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 25px -5px rgba(163, 245, 43, 0.3);
+        }
+        .btn-primary:disabled {
+            background-color: #4b5563;
+            color: #9ca3af;
+            cursor: not-allowed;
+            transform: scale(1);
+            box-shadow: none;
+        }
+        /* Task Card Style */
+        .task-card {
+            background-color: #1F2937; /* Slightly lighter than body */
+            border: 1px solid #374151; /* Subtle border */
+            transition: border-color 0.2s ease, transform 0.2s ease, opacity 0.3s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            border-color: #4b5563;
+        }
+        /* Custom focus ring for form elements */
+        .form-input-focus:focus {
+            --tw-ring-opacity: 1;
+            --tw-ring-color: rgb(163 245 43 / var(--tw-ring-opacity));
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            border-color: rgb(163 245 43 / 0.7);
+        }
+        /* Styles for completed tasks */
+        .task-completed {
+            opacity: 0.5;
+        }
+        .task-completed .task-content {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+        /* Custom checkbox */
+        .task-checkbox {
+            accent-color: #A3F52B;
+        }
+    </style>
+</head>
+<body class="text-gray-300">
+
+    <div class="flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="w-full border-b border-gray-700/50">
+            <div class="container mx-auto px-6 lg:px-8">
+                <div class="flex justify-start items-center py-5">
+                    <h1 class="text-2xl font-bold text-white tracking-wider font-heading">MetraPlan AI</h1>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-6 lg:px-8 max-w-3xl mt-12">
+            <div class="text-left mb-10">
+                <h2 class="text-4xl md:text-5xl font-bold tracking-tight text-white font-heading">Turn Vision into a Concrete Plan</h2>
+                <p class="text-lg text-gray-400 mt-3">Leverage AI to break down your biggest goals into a manageable, step-by-step roadmap for success.</p>
+            </div>
+
+            <div class="bg-[#1F2937] p-6 sm:p-8 rounded-xl border border-gray-700">
+                <form id="goal-form">
+                    <label for="goal-input" class="block text-base font-medium text-gray-300 mb-2">Describe your objective</label>
+                    <textarea id="goal-input" rows="3" class="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 form-input-focus outline-none" placeholder="e.g., Remodel the kitchen in 2 months"></textarea>
+                    <button type="submit" id="generate-button" class="mt-5 w-full btn-primary font-bold py-3 px-4 rounded-md text-base font-heading">
+                        Generate Action Plan
+                    </button>
+                </form>
+            </div>
+
+            <div id="plan-output-container" class="mt-12">
+                 <div id="loading-indicator" class="text-center hidden py-8">
+                     <svg class="animate-spin h-8 w-8 text-gray-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    <p class="mt-3 text-base font-medium text-gray-400">Constructing your plan...</p>
+                </div>
+                 <div id="error-message" class="text-center hidden p-4 bg-red-900/20 text-red-300 rounded-lg border border-red-500/30"></div>
+                 <div id="plan-output"></div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="w-full py-8 mt-16 border-t border-gray-700/50">
+             <div class="container mx-auto text-center text-gray-500 text-sm">
+                <p>&copy; 2025 MetraPlan AI. All rights reserved.</p>
+             </div>
+        </footer>
+    </div>
+
+    <script>
+        const goalForm = document.getElementById('goal-form');
+        const goalInput = document.getElementById('goal-input');
+        const planOutputContainer = document.getElementById('plan-output-container');
+        const planOutput = document.getElementById('plan-output');
+        const generateButton = document.getElementById('generate-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorMessage = document.getElementById('error-message');
+
+        let currentPlanTasks = []; // Store the current plan to be used by other functions
+
+        goalForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const goal = goalInput.value.trim();
+
+            if (!goal) {
+                displayError("Please enter a goal before generating a plan.");
+                return;
+            }
+            
+            generateButton.disabled = true;
+            generateButton.innerHTML = `
+                <span class="flex items-center justify-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                </span>`;
+            loadingIndicator.classList.remove('hidden');
+            planOutput.innerHTML = '';
+            errorMessage.classList.add('hidden');
+
+            try {
+                const response = await fetch('/generate-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ goal: goal }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'An unexpected error occurred.');
+                }
+
+                const plan = await response.json();
+                currentPlanTasks = plan; // Save the plan
+                renderPlan(plan);
+
+            } catch (error) {
+                console.error('Error:', error);
+                displayError(error.message);
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = 'Generate Action Plan';
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+
+        function renderPlan(tasks) {
+            planOutput.innerHTML = ''; 
+            
+            if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+                 displayError("The AI couldn't generate a valid plan for this goal. Please try rephrasing or being more specific.");
+                 return;
+            }
+
+            // --- HEADING AND COPY BUTTON ---
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex justify-between items-center mb-6';
+
+            const heading = document.createElement('h2');
+            heading.className = 'text-2xl font-bold text-white font-heading';
+            heading.textContent = 'Your Action Plan';
+            headerDiv.appendChild(heading);
+
+            const copyButton = document.createElement('button');
+            copyButton.className = 'flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors';
+            copyButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                </svg>
+                <span id="copy-button-text">Copy Plan</span>`;
+            copyButton.onclick = () => copyPlanToClipboard(copyButton);
+            headerDiv.appendChild(copyButton);
+            planOutput.appendChild(headerDiv);
+
+            // --- TASK GRID ---
+            const taskGrid = document.createElement('div');
+            taskGrid.className = 'space-y-3';
+            planOutput.appendChild(taskGrid);
+
+            tasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'task-card p-4 rounded-lg flex items-start gap-4';
+                
+                // Checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'task-checkbox mt-1 h-5 w-5 flex-shrink-0';
+                card.appendChild(checkbox);
+
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'flex-grow';
+
+                let dependenciesText = 'None';
+                if (task.dependencies && task.dependencies.length > 0) {
+                    const depNames = task.dependencies.map(depId => {
+                        const depTask = tasks.find(t => t.id === depId);
+                        return depTask ? `"${depTask.taskName}"` : `Task #${depId}`;
+                    }).join(', ');
+                    dependenciesText = `<span class="font-medium text-amber-400">${depNames}</span>`;
+                }
+
+                contentWrapper.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center">
+                        <h3 class="task-content text-lg font-semibold text-gray-100 mb-1 sm:mb-0 font-heading">${task.id}. ${task.taskName || 'Untitled Task'}</h3>
+                        <span class="bg-gray-700 text-gray-300 text-xs font-medium px-2.5 py-1 rounded-full self-start sm:self-center">${task.timeline || 'N/A'}</span>
+                    </div>
+                    <p class="task-content text-gray-400 my-2 text-sm">${task.description || 'No description provided.'}</p>
+                    <p class="text-xs text-gray-500"><strong class="text-gray-400">Requires:</strong> ${dependenciesText}</p>
+                `;
+                card.appendChild(contentWrapper);
+                taskGrid.appendChild(card);
+            });
+
+            addInteractiveListeners();
+        }
+
+        function addInteractiveListeners() {
+            const checkboxes = document.querySelectorAll('.task-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (event) => {
+                    const card = event.target.closest('.task-card');
+                    if (event.target.checked) {
+                        card.classList.add('task-completed');
+                    } else {
+                        card.classList.remove('task-completed');
+                    }
+                });
+            });
+        }
+
+        function copyPlanToClipboard(buttonElement) {
+            if (currentPlanTasks.length === 0) return;
+
+            const planText = currentPlanTasks.map(task => {
+                const deps = task.dependencies.length > 0 ? ` (Requires: #${task.dependencies.join(', #')})` : '';
+                return `${task.id}. ${task.taskName} [${task.timeline}]${deps}\n   - ${task.description}`;
+            }).join('\n\n');
+
+            const textarea = document.createElement('textarea');
+            textarea.value = planText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            // Visual feedback
+            const buttonText = buttonElement.querySelector('#copy-button-text');
+            if (buttonText) {
+                buttonText.textContent = 'Copied!';
+                setTimeout(() => {
+                    buttonText.textContent = 'Copy Plan';
+                }, 2000);
+            }
+        }
+
+        function displayError(message) {
+            planOutput.innerHTML = '';
+            errorMessage.textContent = `Error: ${message}`;
+            errorMessage.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
+
