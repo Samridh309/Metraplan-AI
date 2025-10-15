@@ -3,47 +3,19 @@ import requests
 import json
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
+from flask_cors import CORS
 
-# --- NEW DEBUGGING CODE ---
-# Get the absolute path to the directory where this script is located
-basedir = os.path.abspath(os.path.dirname(__file__))
-# Construct the full path to the .env file
-dotenv_path = os.path.join(basedir, '.env')
-
-print(f"--- Debug Info ---")
-print(f"Looking for .env file at: {dotenv_path}")
-
-# Explicitly load the .env file from the constructed path
-if os.path.exists(dotenv_path):
-    print(".env file found! Loading variables.")
-    load_dotenv(dotenv_path=dotenv_path)
-else:
-    print("Warning: .env file not found at the expected location.")
-
-# Check for the API key after attempting to load
-api_key_check = os.getenv("GEMINI_API_KEY")
-if api_key_check:
-    # Print only a part of the key for security
-    print(f"Successfully loaded GEMINI_API_KEY, starting with: {api_key_check[:4]}...")
-else:
-    print("Error: GEMINI_API_KEY was not found after checking .env file.")
-print("--- End Debug Info ---\n")
-# --- END NEW DEBUGGING CODE ---
-
+# Load environment variables from .env file for local development
+load_dotenv()
 
 # Initialize the Flask application
 app = Flask(__name__)
 
-# --- Serve Frontend ---
-@app.route('/')
-def serve_index():
-    """Serves the main index.html file."""
-    return send_from_directory('.', 'index.html')
+# Enable CORS. This is necessary for local testing and doesn't harm the Vercel deployment.
+CORS(app)
 
 # --- LLM Integration ---
-
-# Define the default prompt as a constant.
-# The '{goal_text}' placeholder will be filled in by the user's goal.
+# (This section is unchanged)
 DEFAULT_PROMPT_TEMPLATE = """
 You are a world-class project manager AI. Your task is to break down a user's goal into a detailed project plan. Analyze the following goal and decompose it into a series of actionable tasks. For each task, provide a concise name, a brief description, a list of dependencies (using the `id` of other tasks), and an estimated timeline. The user's goal is: '{goal_text}'.
 
@@ -60,63 +32,68 @@ Important: Respond with ONLY a valid JSON array of objects. Do not include any e
 def generate_plan_with_llm(goal_text, prompt_template=None):
     """
     Calls the Gemini API with a specific prompt to break down a goal into a JSON plan.
-    Accepts an optional prompt_template to override the default behavior.
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        # This check should now be redundant but is kept as a safeguard.
-        print("Error inside generate_plan_with_llm: GEMINI_API_KEY is not set.")
+        print("Error: GEMINI_API_KEY is not set.")
         return None
 
     api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
     
-    if not prompt_template:
-        prompt_template = DEFAULT_PROMPT_TEMPLATE
-
-    prompt = prompt_template.format(goal_text=goal_text)
+    prompt = (prompt_template or DEFAULT_PROMPT_TEMPLATE).format(goal_text=goal_text)
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     headers = {'Content-Type': 'application/json'}
 
     try:
         response = requests.post(api_url, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
-        result_json_str = response.json()['candidates'][0]['content']['parts'][0]['text']
-        plan = json.loads(result_json_str)
-        return plan
+        response_json = response.json()
+
+        if 'candidates' in response_json and len(response_json['candidates']) > 0:
+            raw_text = response_json['candidates'][0]['content']['parts'][0]['text']
+            clean_json_str = raw_text.strip().lstrip('```json').rstrip('```').strip()
+            plan = json.loads(clean_json_str)
+            return plan
+        else:
+            print("API response did not contain any valid candidates.")
+            return None
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
-        print(f"Response text from Google API: {http_err.response.text}")
+        return None
+    except json.JSONDecodeError as json_err:
+        print(f"Failed to decode JSON from API response: {json_err}")
         return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
 
-
-# --- API Endpoint ---
-
-@app.route('/generate-plan', methods=['POST'])
+# --- API Endpoint (Works everywhere) ---
+@app.route('/api/generate-plan', methods=['POST'])
 def generate_plan_endpoint():
     """
     API endpoint to generate a project plan.
     """
     data = request.get_json()
-    goal = data.get('goal')
-    prompt_template = data.get('prompt_template')
+    if not data or 'goal' not in data:
+        return jsonify({"error": "Missing 'goal' in request body"}), 400
 
-    if not goal:
-        return jsonify({"error": "Missing 'goal' field"}), 400
-
-    print(f"Received goal: {goal}")
-    print("Generating plan with Gemini...")
-    plan = generate_plan_with_llm(goal, prompt_template)
+    plan = generate_plan_with_llm(data['goal'])
 
     if plan:
-        print("Successfully generated plan.")
         return jsonify(plan)
     else:
         return jsonify({"error": "Failed to generate plan from LLM."}), 500
 
-# Run the Flask app
+
+# --- Environment-Aware Routing ---
+# This block adds the root route ONLY when running locally (not on Vercel).
+# Vercel sets the 'VERCEL' environment variable, so we check for its absence.
+if os.getenv('VERCEL') is None:
+    @app.route('/')
+    def serve_index():
+        # Serves the index.html from the parent directory (project root)
+        return send_from_directory('..', 'index.html')
+
+# This allows running the app directly for local development
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
