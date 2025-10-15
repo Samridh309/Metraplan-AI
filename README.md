@@ -30,10 +30,24 @@ Metraplan-AI streamlines your daily planning:
 ## Screenshots
 
 **Landing Page**
+
 ![Landing Page](./assets/landing-page.png) <!-- Image 2 -->
 
 **Action Plan Example**
+
 ![Action Plan Example](./assets/action-plan-example.png) <!-- Image 1 -->
+
+**Site Screenshot**
+
+![Site Screenshot](https://github.com/Samridh309/Metraplan-AI/blob/main/img.jpg?raw=true)
+
+---
+
+## Demo Video
+
+[![Watch the Demo](https://github.com/Samridh309/Metraplan-AI/blob/main/LandingPage.jpg?raw=true)](https://drive.google.com/file/d/1bRXi_Se3xYPNKut8lFP95vKL8XSAuP9z/view?usp=sharing)
+<br>
+[Watch Demo Video](https://drive.google.com/file/d/1bRXi_Se3xYPNKut8lFP95vKL8XSAuP9z/view?usp=sharing)
 
 ---
 
@@ -44,6 +58,7 @@ Metraplan-AI streamlines your daily planning:
 - **Gemini API:** Google's advanced AI API for natural language processing and smart planning features.
 - **HTML & JavaScript:** For building a responsive, interactive, and modern web user interface.
 - **REST API Design:** Clean, well-documented endpoints for all core functionalities, enabling both web and programmatic access.
+- **Vercel:** Used for seamless deployment of the frontend for a fast and reliable user experience.
 
 ---
 
@@ -93,6 +108,9 @@ Refer to the in-repo API documentation or Flask code for details.
 
 5. **(Optional) Build/Serve Frontend Assets:**
    - If using a custom build system for JavaScript assets, follow the instructions in the frontend directory (if provided).
+
+6. **Deploy Frontend to Vercel:**
+   - The frontend can be deployed on [Vercel](https://vercel.com/) for fast, global delivery. Simply connect your repository and follow the Vercel deployment guide for static or frontend assets.
 
 ---
 
