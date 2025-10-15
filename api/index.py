@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 
 # --- LLM Integration ---
-# (This section is significantly modified for reliable JSON output)
+# (The prompt is simplified as the schema now handles the strict output requirement)
 DEFAULT_PROMPT_TEMPLATE = """
 You are a world-class project manager AI. Your task is to break down a user's goal into a detailed project plan. Analyze the following goal and decompose it into a series of actionable tasks. For each task, provide a concise name, a brief description, a list of dependencies (using the 'id' of other tasks), and an estimated timeline. The user's goal is: '{goal_text}'.
 """
@@ -50,9 +50,10 @@ def generate_plan_with_llm(goal_text, prompt_template=None):
     }
     
     # 2. Configure the payload to use JSON Mode and the schema
+    #    FIX: 'generationConfig' is the correct field name instead of 'config'
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "config": {
+        "generationConfig": {
             "responseMimeType": "application/json",
             "responseSchema": response_schema
         }
@@ -66,7 +67,7 @@ def generate_plan_with_llm(goal_text, prompt_template=None):
         response_json = response.json()
 
         if 'candidates' in response_json and len(response_json['candidates']) > 0:
-            # 3. Simplify parsing: JSON Mode guarantees a clean JSON string
+            # Parsing logic is simple as JSON Mode guarantees a clean JSON string
             json_text = response_json['candidates'][0]['content']['parts'][0]['text']
             plan = json.loads(json_text)
             return plan
@@ -80,7 +81,6 @@ def generate_plan_with_llm(goal_text, prompt_template=None):
         return None
     except json.JSONDecodeError as json_err:
         print(f"Failed to decode JSON from API response: {json_err}")
-        # This error is now highly unlikely due to JSON Mode, but kept for robustness
         return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
