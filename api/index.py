@@ -14,11 +14,8 @@ app = Flask(__name__)
 # Enable CORS. This is necessary for local testing and doesn't harm the Vercel deployment.
 CORS(app)
 
-# --- LLM Integration ---
-# (The prompt is simplified as the schema now handles the strict output requirement)
-DEFAULT_PROMPT_TEMPLATE = """
-You are a world-class project manager AI. Your task is to break down a user's goal into a detailed project plan. Analyze the following goal and decompose it into a series of actionable tasks. For each task, provide a concise name, a brief description, a list of dependencies (using the 'id' of other tasks), and an estimated timeline. The user's goal is: '{goal_text}'.
-"""
+# LLM Integration
+DEFAULT_PROMPT_TEMPLATE =
 
 def generate_plan_with_llm(goal_text, prompt_template=None):
     """
@@ -50,7 +47,6 @@ def generate_plan_with_llm(goal_text, prompt_template=None):
     }
     
     # 2. Configure the payload to use JSON Mode and the schema
-    #    FIX: 'generationConfig' is the correct field name instead of 'config'
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -86,7 +82,7 @@ def generate_plan_with_llm(goal_text, prompt_template=None):
         print(f"An unexpected error occurred: {e}")
         return None
 
-# --- API Endpoint (Works everywhere) ---
+# --- API Endpoint ---
 @app.route('/api/generate-plan', methods=['POST'])
 def generate_plan_endpoint():
     """
@@ -101,19 +97,15 @@ def generate_plan_endpoint():
     if plan:
         return jsonify(plan)
     else:
-        # The 500 status will correctly trigger the frontend error display
+      
         return jsonify({"error": "Failed to generate plan from LLM. Check server logs for API errors or JSON parsing issues."}), 500
 
 
 # --- Environment-Aware Routing ---
-# This block adds the root route ONLY when running locally (not on Vercel).
-# Vercel sets the 'VERCEL' environment variable, so we check for its absence.
 if os.getenv('VERCEL') is None:
     @app.route('/')
     def serve_index():
-        # Serves the index.html from the parent directory (project root)
         return send_from_directory('..', 'index.html')
 
-# This allows running the app directly for local development
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
